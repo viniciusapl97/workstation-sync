@@ -16,6 +16,16 @@ REPOS=(
   "$HOME/spotify-controller|NarkAgni/spotify-controller"
 )
 
+# Lista específica desta máquina (mesmo formato, uma entrada por linha; # comenta)
+LOCAL_LIST=${XDG_CONFIG_HOME:-$HOME/.config}/workstation-sync/repos
+if [[ -f $LOCAL_LIST ]]; then
+  REPOS=()
+  while IFS= read -r line; do
+    [[ $line =~ ^[[:space:]]*(#|$) ]] && continue
+    REPOS+=("${line//\$HOME/$HOME}")
+  done <"$LOCAL_LIST"
+fi
+
 say() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 
 install_pkgs() {

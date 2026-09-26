@@ -11,3 +11,5 @@ cd ~/Projects/workstation-sync
 - `./apply-dotfiles.sh`: aplica os dotfiles via chezmoi (feitos para Fedora + niri). Mostra o diff e pede confirmação.
 
 Projeto novo: adicione ao array `REPOS` em `sync-repos.sh`.
+
+Lista por máquina: se `~/.config/workstation-sync/repos` existir, ela substitui o `REPOS` (formato `destino|dono/repo`, uma por linha, `#` comenta, `$HOME` é expandido).
