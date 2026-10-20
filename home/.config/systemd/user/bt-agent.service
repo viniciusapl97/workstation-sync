@@ -1,0 +1,11 @@
+[Unit]
+Description=Bluetooth pairing agent (bt-agent)
+After=dbus.service
+
+[Service]
+ExecStart=/usr/bin/bt-agent -c NoInputNoOutput
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

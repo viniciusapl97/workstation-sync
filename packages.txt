@@ -1,0 +1,47 @@
+# Pacotes que uso além dos que o Omarchy já instala (yay: repositório oficial e AUR).
+# @pacote comando  instala pelo instalador do Omarchy (ele escolhe drivers e configura sozinho)
+# !pacote   instalado no notebook mas fica de fora de propósito (o capture.sh não avisa dele)
+
+# Navegadores e apps
+brave-bin
+zen-browser-bin
+firefox
+spotify
+pear-desktop-bin
+visual-studio-code-bin
+antigravity-ide
+antigravity-cli
+hermes-desktop
+
+# Terminal e arquivos
+kitty
+yazi
+7zip
+
+# Desenvolvimento
+cmake
+meson
+jdk21-openjdk
+xorg-server-xvfb
+hopper                  # usado pelo MCP rea (opencode.json)
+
+# Sistema
+usbutils
+bluez-tools             # bt-agent.service: parear Bluetooth sem diálogo
+
+# Celular (MyBar → fluxd); o plugin vem do pacote, ativado pelo `flux-cli setup`
+omarchy-flux
+
+@voxtype-bin  omarchy-voxtype-install          # ditado por voz
+@steam        omarchy-install-gaming-steam     # com os drivers lib32 da GPU
+
+# Específicos do notebook
+!amd-ucode
+!lib32-vulkan-radeon
+!fprintd
+!libfprint-git
+!fwupd
+!sudo
+!omarchy-settings
+# Só servia para o Shibumi
+!ttf-material-symbols-variable

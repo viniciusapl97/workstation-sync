@@ -1,0 +1,106 @@
+#!/bin/bash
+# Gerencia wallpapers por tema do Omarchy (~/.config/omarchy/backgrounds/<tema>).
+#
+#   wallpapers                     menu interativo
+#   wallpapers add <img...> [-t tema]
+#   wallpapers move <img> <tema>
+#   wallpapers rm <img>
+#   wallpapers ls [tema]
+
+set -euo pipefail
+
+BASE="$HOME/.config/omarchy/backgrounds"
+EXTS="png jpg jpeg webp"
+
+slug() { tr '[:upper:] ' '[:lower:]-' <<<"$1"; }
+current_theme() { slug "$(omarchy theme current)"; }
+
+pick_theme() {
+  local cur; cur="$(current_theme)"
+  { echo "$cur"; omarchy theme list | while read -r t; do slug "$t"; done | grep -vx "$cur"; } |
+    gum filter --header "${1:-Tema}" --placeholder "buscar tema..."
+}
+
+pick_wallpaper() {
+  local dir="$BASE${1:+/$1}"
+  find "$dir" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) 2>/dev/null |
+    sed "s|^$BASE/||" | sort | gum filter --header "${2:-Wallpaper}" --placeholder "buscar..." |
+    sed "s|^|$BASE/|"
+}
+
+cmd_add() {
+  local theme="" files=()
+  while (($#)); do
+    case "$1" in
+      -t) theme="$(slug "$2")"; shift 2 ;;
+      *) files+=("$1"); shift ;;
+    esac
+  done
+  if ((${#files[@]} == 0)); then
+    mapfile -t files < <(omarchy-file-select --title "Escolha os wallpapers" --multiple --extensions "$EXTS") || exit 0
+  fi
+  ((${#files[@]})) || exit 0
+  [[ -n $theme ]] || theme="$(pick_theme "Adicionar a qual tema?")" || exit 0
+  mkdir -p "$BASE/$theme"
+  for f in "${files[@]}"; do
+    [[ -f $f ]] || { echo "Não encontrado: $f" >&2; continue; }
+    cp -n -- "$f" "$BASE/$theme/"
+    echo "+ $(basename -- "$f") -> $theme"
+  done
+}
+
+cmd_move() {
+  local img="${1:-}" theme="${2:-}"
+  [[ -n $img ]] || img="$(pick_wallpaper "" "Mover qual wallpaper?")" || exit 0
+  [[ -f $img ]] || { echo "Não encontrado: $img" >&2; exit 1; }
+  [[ -n $theme ]] && theme="$(slug "$theme")" || theme="$(pick_theme "Mover para qual tema?")" || exit 0
+  mkdir -p "$BASE/$theme"
+  mv -n -- "$img" "$BASE/$theme/"
+  echo "$(basename -- "$img") -> $theme"
+}
+
+cmd_rm() {
+  local img="${1:-}"
+  [[ -n $img ]] || img="$(pick_wallpaper "" "Remover qual wallpaper?")" || exit 0
+  [[ -f $img ]] || exit 1
+  gum confirm "Apagar $(basename -- "$img")?" && rm -- "$img" && echo "Removido."
+}
+
+cmd_ls() {
+  local theme="${1:-}"
+  if [[ -n $theme ]]; then
+    ls -1 "$BASE/$(slug "$theme")" 2>/dev/null
+  else
+    for d in "$BASE"/*/; do
+      [[ -d $d ]] && printf '%-16s %s\n' "$(basename "$d")" "$(find "$d" -maxdepth 1 -type f | wc -l)"
+    done
+  fi
+}
+
+cmd_set() {
+  local img; img="$(pick_wallpaper "$(current_theme)" "Usar como fundo")" || exit 0
+  [[ -f $img ]] && omarchy theme bg set "$img"
+}
+
+menu() {
+  local c
+  c="$(gum choose --header "Wallpapers (tema atual: $(current_theme))" \
+    "Adicionar" "Mover para outro tema" "Definir fundo" "Remover" "Listar")" || exit 0
+  case "$c" in
+    Adicionar) cmd_add ;;
+    Mover*) cmd_move ;;
+    Definir*) cmd_set ;;
+    Remover) cmd_rm ;;
+    Listar) cmd_ls ;;
+  esac
+}
+
+case "${1:-}" in
+  add) shift; cmd_add "$@" ;;
+  move | mv) shift; cmd_move "$@" ;;
+  rm) shift; cmd_rm "$@" ;;
+  ls) shift; cmd_ls "$@" ;;
+  set) cmd_set ;;
+  "") menu ;;
+  *) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

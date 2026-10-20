@@ -1,0 +1,2 @@
+# Attack Shark R85HE: lets the logged-in user reach the keyboard's config channel (USB interface 2) for MyBar.
+SUBSYSTEM=="hidraw", ENV{ID_USB_VENDOR_ID}=="3151", ENV{ID_USB_MODEL_ID}=="5029", ENV{ID_USB_INTERFACE_NUM}=="02", TAG+="uaccess"

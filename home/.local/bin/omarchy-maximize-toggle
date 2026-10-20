@@ -1,0 +1,20 @@
+#!/bin/bash
+# Super+F estilo Niri.
+# No layout scrolling: alterna a coluna entre largura total e a largura padrão,
+# sem sair do fluxo (dá pra continuar rolando/navegando entre janelas).
+# No dwindle: usa o maximizar do Hyprland.
+
+layout=$(hyprctl activeworkspace -j | jq -r '.tiledLayout')
+
+if [[ $layout == scrolling ]]; then
+  win_w=$(hyprctl activewindow -j | jq -r '.size[0]')
+  mon_w=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | (.width / .scale)')
+  default=$(hyprctl getoption scrolling:column_width -j | jq -r '.float // 0.5')
+  if awk -v w="$win_w" -v m="$mon_w" 'BEGIN { exit !(w > m * 0.8) }'; then
+    hyprctl dispatch "hl.dsp.layout(\"colresize $default\")" >/dev/null
+  else
+    hyprctl dispatch 'hl.dsp.layout("colresize 1.0")' >/dev/null
+  fi
+else
+  hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized" })' >/dev/null
+fi

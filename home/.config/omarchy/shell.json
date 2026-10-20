@@ -1,0 +1,183 @@
+{
+  "bar": {
+    "centerAnchor": "omarchy.clock",
+    "layout": {
+      "center": [
+        {
+          "id": "omarchy.indicators"
+        },
+        {
+          "format": "dddd HH:mm",
+          "formatAlt": "d MMMM 'W'ww yyyy",
+          "id": "omarchy.clock",
+          "verticalFormat": "HH\n—\nmm"
+        },
+        {
+          "id": "omarchy.keyboard-layout"
+        },
+        {
+          "id": "omarchy.weather"
+        },
+        {
+          "id": "omarchy.system-update"
+        }
+      ],
+      "left": [
+        {
+          "id": "omarchy.menu"
+        }
+      ],
+      "right": [
+        {
+          "id": "omarchy.tray"
+        },
+        {
+          "id": "flux"
+        },
+        {
+          "id": "omarchy.tailscale"
+        },
+        {
+          "id": "omarchy.agents"
+        },
+        {
+          "id": "omarchy.bluetooth"
+        },
+        {
+          "id": "omarchy.network"
+        },
+        {
+          "id": "omarchy.audio"
+        },
+        {
+          "id": "omarchy.monitor"
+        },
+        {
+          "id": "omarchy.power"
+        },
+        {
+          "id": "io.github.hmarquez-solutions.buds"
+        },
+        {
+          "id": "v1ni.wallpaper-organizer"
+        },
+        {
+          "id": "v1ni.keyboard"
+        }
+      ]
+    },
+    "position": "top",
+    "transparent": false,
+    "id": "v1ni.mybar"
+  },
+  "cloneSourceRestores": [
+    "io.github.sirjul1337.lock-explorer"
+  ],
+  "disabledPlugins": [
+    "omarchy.lock",
+    "omarchy.notifications",
+    "omarchy.osd"
+  ],
+  "idle": {
+    "lock": 300,
+    "screensaver": 150
+  },
+  "plugins": [
+    {
+      "design": "poster",
+      "id": "io.github.sirjul1337.lock-explorer"
+    },
+    {
+      "id": "bobbynicholas.omaland"
+    },
+    {
+      "align": "center",
+      "autohide": true,
+      "backgroundOpacity": 0.1,
+      "border": false,
+      "borderOpacity": 0.95,
+      "cornerRadius": 18,
+      "cornerShape": "rounded",
+      "dodge": true,
+      "edge": "bottom",
+      "fullWidth": false,
+      "gaussianZoom": true,
+      "glass": true,
+      "glassRim": 0.1,
+      "glassSheen": 0.12,
+      "hotspotHeight": 6,
+      "iconOpacity": 1,
+      "iconSize": 40,
+      "id": "v1ni.mydock",
+      "items": [
+        {
+          "label": "Omarchy Menu",
+          "showApps": true,
+          "tint": true
+        },
+        {
+          "date": "2026-11-06",
+          "span": 2,
+          "start": "2026-09-30",
+          "title": "AIF-C01",
+          "url": "https://claude.ai/artifact/Rea9zyNLFXf7yjWVxMuixF",
+          "widget": "countdown"
+        },
+        {
+          "desktop": "brave-browser"
+        },
+        {
+          "desktop": "org.gnome.Nautilus"
+        },
+        {
+          "exec": "xdg-terminal-exec claude",
+          "widget": "claude",
+          "span": 2.5
+        },
+        {
+          "desktop": "hermes-desktop"
+        },
+        {
+          "widget": "calendar",
+          "iconScale": 1.12
+        },
+        {
+          "desktop": "kitty"
+        },
+        {
+          "desktop": "WhatsApp"
+        },
+        {
+          "desktop": "YouTube"
+        },
+        {
+          "desktop": "Discord"
+        },
+        {
+          "desktop": "steam"
+        },
+        {
+          "appId": "com.github.th-ch.youtube-music",
+          "span": 5,
+          "widget": "ytmusic"
+        }
+      ],
+      "labels": true,
+      "magnify": true,
+      "monochrome": false,
+      "padding": 8,
+      "pressure": true,
+      "reserveSpace": true,
+      "runningIndicator": "dot",
+      "showWhenEmpty": true,
+      "spacing": 5,
+      "tileOpacity": 0.15,
+      "tiles": false,
+      "tintIcons": false,
+      "tintRunning": false,
+      "zoom": 0.3,
+      "autoContrast": true
+    }
+  ],
+  "version": 1
+}

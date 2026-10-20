@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Clona ou atualiza meus repositórios. Não mexe em dotfiles. Seguro para rodar várias vezes.
+# Clona ou atualiza meus projetos em ~/Projects. Não mexe em configs. Seguro para rodar várias vezes.
 set -euo pipefail
 
 GH_USER=viniciusapl97
 
 # destino | repo
 REPOS=(
+  "$HOME/Projects/workstation-sync|$GH_USER/workstation-sync"
+  "$HOME/Projects/mesa|$GH_USER/mesa"
+  "$HOME/Projects/prancha|$GH_USER/prancha"
+  "$HOME/Projects/app-faculdade|$GH_USER/app-faculdade"
+  "$HOME/Projects/sela|$GH_USER/sela"
   "$HOME/Projects/study-platform|$GH_USER/study-platform"
   "$HOME/Projects/fatec-bot|$GH_USER/fatec-bot"
-  "$HOME/Projects/niri-monitor|$GH_USER/niri-monitor"
-  "$HOME/Projects/workstation-sync|$GH_USER/workstation-sync"
-  "$HOME/.local/share/noctalia-plugins/ai-usage|$GH_USER/ai-usage"
-  "$HOME/.local/share/noctalia-plugins/github-activity|$GH_USER/github-activity"
-  "$HOME/cliamp|bjarneo/cliamp"
-  "$HOME/spotify-controller|NarkAgni/spotify-controller"
+  "$HOME/Projects/finance_agent|jabiraka/finance_agent"
 )
 
 # Lista específica desta máquina (mesmo formato, uma entrada por linha; # comenta)

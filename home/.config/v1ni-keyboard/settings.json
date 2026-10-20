@@ -1,0 +1,28 @@
+{
+  "global": {
+    "layout": "br",
+    "variant": "thinkpad",
+    "options": [
+      "compose:caps",
+      "shift:both_capslock_cancel"
+    ],
+    "repeat_rate": 40,
+    "repeat_delay": 250
+  },
+  "devices": {
+    "-------r85he": {
+      "layout": "us",
+      "variant": "intl",
+      "options": [
+        "compose:caps",
+        "shift:both_capslock_cancel"
+      ],
+      "repeat_rate": 40,
+      "repeat_delay": 250,
+      "names": [
+        "-------r85he-keyboard",
+        "-------r85he"
+      ]
+    }
+  }
+}

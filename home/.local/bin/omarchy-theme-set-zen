@@ -1,0 +1,87 @@
+#!/bin/bash
+# Aplica as cores do tema atual do Omarchy no Zen Browser (userChrome.css + user.js).
+# Chamado pelo hook theme-set; pode ser rodado à mão também.
+
+COLORS=$HOME/.local/state/omarchy/current/theme/colors.toml
+ZEN_DIR=$HOME/.config/zen
+
+[[ -f $COLORS && -f $ZEN_DIR/profiles.ini ]] || exit 0
+
+color() { grep -E "^$1\s*=" "$COLORS" | head -1 | sed -E 's/.*"(#[0-9a-fA-F]{6})".*/\1/'; }
+
+bg=$(color background)
+bg_dark=$(color dark_background)
+bg_light=$(color lighter_background)
+fg=$(color foreground)
+fg_dim=$(color dark_foreground)
+accent=$(color accent)
+selection=$(color selection)
+mode=$(grep -E '^mode\s*=' "$COLORS" | sed -E 's/.*"(\w+)".*/\1/')
+[[ -z $bg_dark ]] && bg_dark=$bg
+[[ -z $bg_light ]] && bg_light=$bg
+[[ -z $selection ]] && selection=$bg_light
+[[ -z $fg_dim ]] && fg_dim=$fg
+
+# 0 = escuro, 1 = claro
+[[ $mode == light ]] && scheme=1 || scheme=0
+
+# Todos os perfis do Zen
+grep -E '^Path=' "$ZEN_DIR/profiles.ini" | cut -d= -f2- | sort -u | while read -r rel; do
+  profile="$ZEN_DIR/$rel"
+  [[ -d $profile ]] || continue
+  mkdir -p "$profile/chrome"
+
+  cat >"$profile/chrome/userChrome.css" <<EOF
+/* Gerado por omarchy-theme-set-zen a partir do tema do Omarchy. Não edite. */
+@import url("zen-themes.css");
+
+:root {
+  --zen-colors-primary: $bg_light !important;
+  --zen-colors-secondary: $bg_light !important;
+  --zen-colors-tertiary: $bg_dark !important;
+  --zen-colors-border: $selection !important;
+  --zen-primary-color: $accent !important;
+  --zen-main-browser-background: $bg_dark !important;
+  --zen-main-browser-background-toolbar: $bg_dark !important;
+  --zen-themed-toolbar-bg: $bg_dark !important;
+  --zen-themed-toolbar-bg-transparent: $bg_dark !important;
+  --toolbar-bgcolor: $bg !important;
+  --toolbar-color: $fg !important;
+  --toolbar-field-background-color: $bg_light !important;
+  --toolbar-field-focus-background-color: $bg_light !important;
+  --toolbar-field-color: $fg !important;
+  --toolbar-field-focus-color: $fg !important;
+  --tab-selected-bgcolor: $selection !important;
+  --tab-selected-textcolor: $fg !important;
+  --lwt-text-color: $fg !important;
+  --arrowpanel-background: $bg !important;
+  --arrowpanel-color: $fg !important;
+  --arrowpanel-border-color: $selection !important;
+  --sidebar-background-color: $bg_dark !important;
+  --sidebar-text-color: $fg !important;
+  --urlbarView-highlight-background: $selection !important;
+  --focus-outline-color: $accent !important;
+}
+
+#navigator-toolbox, #zen-appcontent-navbar-container, #zen-sidebar-top-buttons,
+#titlebar, #TabsToolbar, #nav-bar {
+  background-color: $bg_dark !important;
+  color: $fg !important;
+}
+
+.tabbrowser-tab .tab-label { color: $fg_dim !important; }
+.tabbrowser-tab[selected] .tab-label { color: $fg !important; }
+EOF
+
+  # Habilita userChrome.css e segue o modo claro/escuro do tema
+  userjs="$profile/user.js"
+  touch "$userjs"
+  sed -i -E '/toolkit\.legacyUserProfileCustomizations\.stylesheets|layout\.css\.prefers-color-scheme\.content-override|browser\.theme\.(content|toolbar)-theme|omarchy-theme-set-zen/d' "$userjs"
+  cat >>"$userjs" <<EOF
+// omarchy-theme-set-zen
+user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
+user_pref("layout.css.prefers-color-scheme.content-override", $scheme);
+user_pref("browser.theme.toolbar-theme", $scheme);
+user_pref("browser.theme.content-theme", $scheme);
+EOF
+done

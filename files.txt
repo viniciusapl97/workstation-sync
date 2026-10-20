@@ -1,0 +1,54 @@
+# Arquivos copiados para o PC novo, relativos a ~ (ou absolutos, para os de
+# sistema: ficam em system/ e o setup instala com sudo). O capture.sh traz a versão
+# atual deste notebook para home/; o setup.sh copia de home/ para ~.
+# Fora de propósito: hypr/monitors.lua e mybar/displays.json (telas de cada
+# máquina), hypr/input.lua (o instalador do Omarchy grava o layout escolhido;
+# o setup só acrescenta o bloco dos teclados), omarchy-menu.jsonc (rotas do Shibumi).
+
+# Hyprland (hyprland.lua por último: ele dá require nos outros)
+.config/hypr/autostart.lua
+.config/hypr/bindings.lua
+.config/hypr/looknfeel.lua
+.config/hypr/motion.lua
+.config/hypr/dock.lua
+.config/hypr/mybar.lua
+.config/hypr/keyboard.lua
+.config/hypr/hyprland.lua
+.config/v1ni-keyboard/settings.json
+
+# Shell: plugins ativos e configurações (MyDock, Lock Explorer...); MyBar
+.config/omarchy/shell.json
+.config/omarchy/lock-explorer.json
+.local/state/mybar/state.json
+
+# Hooks de tema: ícones Reversal e cores no Zen
+.config/omarchy/hooks/theme-set.d/icon-theme.sh
+.config/omarchy/hooks/theme-set.d/zen-theme.sh
+.local/bin/omarchy-theme-set-zen
+
+# Scripts usados pelos atalhos e pelo MyBar
+.local/bin/omarchy-maximize-toggle
+.local/bin/wallpapers
+
+# Terminais (fonte 11, kitty de vidro), prompt, agentes
+.config/kitty/kitty.conf
+.config/alacritty/alacritty.toml
+.config/foot/foot.ini
+.config/ghostty/config
+.config/starship.toml
+.config/opencode/opencode.json
+.config/mise/config.toml
+
+# Serviços
+.config/systemd/user/bt-agent.service
+
+# Sistema: acesso ao R85HE para o app de teclado do MyBar
+# (80-battery-threshold.rules é do notebook e fica de fora)
+/etc/udev/rules.d/70-attackshark-r85he.rules
+
+# Webapps com os ícones do Reversal
+.local/share/applications/Discord.desktop
+.local/share/applications/WhatsApp.desktop
+.local/share/applications/X.desktop
+.local/share/applications/Telegram.desktop
+.local/share/applications/Disk Usage.desktop
