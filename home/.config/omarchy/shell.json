@@ -98,7 +98,7 @@
       "borderOpacity": 0.95,
       "cornerRadius": 18,
       "cornerShape": "rounded",
-      "dodge": true,
+      "dodge": false,
       "edge": "bottom",
       "fullWidth": false,
       "gaussianZoom": true,
@@ -107,8 +107,8 @@
       "glassSheen": 0.12,
       "hotspotHeight": 6,
       "iconOpacity": 1,
-      "iconSize": 40,
-      "id": "v1ni.mydock",
+      "iconSize": 34,
+      "id": "v1ni.mybar",
       "items": [
         {
           "label": "Omarchy Menu",
@@ -167,7 +167,7 @@
       "monochrome": false,
       "padding": 8,
       "pressure": true,
-      "reserveSpace": true,
+      "reserveSpace": false,
       "runningIndicator": "dot",
       "showWhenEmpty": true,
       "spacing": 5,
@@ -176,7 +176,8 @@
       "tintIcons": false,
       "tintRunning": false,
       "zoom": 0.3,
-      "autoContrast": true
+      "autoContrast": true,
+      "style": "glass"
     }
   ],
   "version": 1

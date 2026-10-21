@@ -5,7 +5,6 @@
 # v1ni.workspaces (widgets de barra, que o MyBar não desenha).
 
 v1ni.mybar                         https://github.com/viniciusapl97/mybar
-v1ni.mydock                        https://github.com/viniciusapl97/mydock
 v1ni.wallpaper-organizer           https://github.com/viniciusapl97/wallpaper-organizer
 v1ni.keyboard                      https://github.com/viniciusapl97/v1ni-keyboard
 io.github.hmarquez-solutions.buds  https://github.com/hmarquez-solutions/omarchy-buds   ./setup

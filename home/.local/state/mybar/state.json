@@ -6,6 +6,7 @@
   "cornerHidden": [],
   "dnd": false,
   "dockBadges": true,
+  "dockEnabled": false,
   "floatGap": 6,
   "fluidEq": true,
   "historyLimit": 50,
