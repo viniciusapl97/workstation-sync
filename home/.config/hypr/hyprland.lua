@@ -18,6 +18,7 @@ require("default.hypr.omarchy")
 -- ~/.config/hypr files.
 require("hypr.monitors")
 require("hypr.input")
+require("hypr.workspaces") -- política de áreas entre notebook e monitor externo
 require("hypr.bindings")
 require("hypr.looknfeel")
 require("hypr.motion") -- molas nas animações (janelas, workspaces)
@@ -35,3 +36,6 @@ require("hypr.mybar") -- v1ni.mybar plugin
 
 -- Teclado (plugin v1ni.keyboard)
 require("hypr.keyboard") -- v1ni.keyboard plugin
+
+-- opencode HUD (~/Projects/opencode-hud): widget flutuante no canto, em todas as workspaces
+require("hypr.opencode-hud")

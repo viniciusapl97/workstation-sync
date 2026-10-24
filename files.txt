@@ -13,6 +13,8 @@
 .config/hypr/dock.lua
 .config/hypr/mybar.lua
 .config/hypr/keyboard.lua
+.config/hypr/workspaces.lua
+.config/hypr/opencode-hud.lua
 .config/hypr/hyprland.lua
 .config/v1ni-keyboard/settings.json
 

@@ -1,4 +1,9 @@
 {
+  "agentsAlert": 80,
+  "agentsAlerted": {},
+  "agentsEvery": 5,
+  "agentsHidden": [],
+  "agentsRing": "session",
   "budsFlash": true,
   "cascadeOnOpen": true,
   "chargerFlash": true,
@@ -10,11 +15,18 @@
   "floatGap": 6,
   "fluidEq": true,
   "historyLimit": 50,
-  "hoverHidden": [],
+  "hoverHidden": [
+    "plugin:omarchy.tailscale",
+    "plugin:omaplug",
+    "plugin:v1ni.wallpaper-organizer",
+    "plugin:v1ni.keyboard"
+  ],
   "itemStyle": {},
   "kbFollowTheme": true,
   "layout": {
-    "left": [],
+    "left": [
+      "agents"
+    ],
     "notch": [
       "tray",
       "weather",
@@ -22,20 +34,24 @@
       "record",
       "clipboard",
       "shelf",
-      "notifications"
+      "notifications",
+      "plugin:omarchy.tailscale",
+      "plugin:omaplug",
+      "plugin:v1ni.wallpaper-organizer"
     ],
     "right": [
+      "plugin:v1ni.keyboard",
       "headphones",
       "status"
     ]
   },
-  "lyricsEnabled": true,
+  "lyricsEnabled": false,
   "mediaStyle": "cover",
   "motionBounce": 2,
   "motionSpeed": 100,
   "motionStyle": "spring",
   "musicCover": false,
-  "musicProgress": true,
+  "musicProgress": false,
   "notchScreens": "primary",
   "notchStyle": "pill",
   "osdMs": 1200,
@@ -48,7 +64,7 @@
   "privacyDots": true,
   "restHeight": 32,
   "restRadius": 14,
-  "screenCornerRadius": 16,
+  "screenCornerRadius": 10,
   "screenCorners": true,
   "shelfHours": 24,
   "shoulderSize": 10,

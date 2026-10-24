@@ -45,3 +45,4 @@ omarchy-flux
 !omarchy-settings
 # Só servia para o Shibumi
 !ttf-material-symbols-variable
+!ventoy-bin

@@ -16,3 +16,13 @@ hl.layer_rule({ match = { namespace = "^mybar-corner$" }, no_anim = true })
 -- Lyrics' own window (layer "mybar-lyrics", Bar.qml): it appears when a song
 -- starts, so it must show in place without the layer open animation.
 hl.layer_rule({ match = { namespace = "^mybar-lyrics$" }, no_anim = true })
+
+-- The side items' floating glass cards (layer "mybar-popup", Bar.qml: Música,
+-- IAs): frosted glass, like the dock. ignore_alpha keeps the fully
+-- transparent part of its fixed-size window (around the card) unblurred.
+--
+-- no_anim: the card animates itself (interno, em GlassCard.qml). Sem isso o
+-- Hyprland aplica também o fade de camada (layersIn/layersOut) por cima, e a
+-- opacidade do vidro atravessa duas vezes o limiar do ignore_alpha — o blur
+-- entra e sai no meio da animação. É o mesmo motivo dos no_anim acima.
+hl.layer_rule({ match = { namespace = "^mybar-popup$" }, blur = true, ignore_alpha = 0.1, no_anim = true })

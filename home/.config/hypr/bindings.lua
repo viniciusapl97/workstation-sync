@@ -87,6 +87,10 @@ o.bind("SUPER + SPACE", "Omarchy menu", "omarchy-shell mybar menu root")
 hl.unbind("SUPER + ESCAPE")
 o.bind("SUPER + ESCAPE", "System menu", "omarchy-shell mybar open power")
 
+-- Super+N abre o bloco de notas do MyBar (mesma abertura do Super+Espaço; repete para fechar)
+o.bind("SUPER + N", "Notas", "omarchy-shell mybar open notes")
+o.bind("SUPER + K", "Comandos", "omarchy-shell mybar open palette")
+
 -- Super+M minimiza a janela em foco (vai pro workspace escondido "minimized"; o ícone dela aparece no canto direito do MyBar para restaurar)
 o.bind("SUPER + M", "Minimize window", hl.dsp.window.move({ workspace = "special:minimized", follow = false }))
 
@@ -105,13 +109,16 @@ o.bind("SUPER + SHIFT + C", "Stay awake", "omarchy-shell mybar stayAwake")
 -- Super+Shift+T mostra/esconde a barra
 o.bind_toggle("SUPER + SHIFT + T", "Toggle top bar", "bar")
 
--- Áreas de trabalho dinâmicas estilo Niri: PgDown na última área ocupada cria uma nova vazia
+-- Áreas de trabalho dinâmicas estilo Niri, presas ao monitor em foco: PgDown na
+-- última área ocupada daquela tela cria uma nova vazia; nunca leva o cursor para
+-- a tela do apoio nem traz área de outra tela para debaixo dele.
 local function workspace_step(dir, move)
   return function()
     local cur = hl.get_active_workspace()
+    local mon = cur.monitor and cur.monitor.name
     local ids = {}
     for _, w in ipairs(hl.get_workspaces()) do
-      if w.id > 0 and (w.windows > 0 or w.id == cur.id) then ids[#ids + 1] = w.id end
+      if w.id > 0 and (w.windows > 0 or w.id == cur.id) and (not mon or (w.monitor and w.monitor.name == mon)) then ids[#ids + 1] = w.id end
     end
     table.sort(ids)
     local target
@@ -138,6 +145,40 @@ hl.unbind("SUPER + Prior")
 hl.unbind("SUPER + Next")
 o.bind("SUPER + Prior", "Previous workspace", workspace_step(-1))
 o.bind("SUPER + Next", "Next workspace (creates new)", workspace_step(1))
+
+-- Super+` troca o foco entre a tela de trabalho e a tela de apoio (aperta de
+-- novo e volta) — a área de apoio fica na tela do notebook, tomada pelo vídeo,
+-- Discord e WhatsApp. Com uma tela só, leva direto para a área de apoio.
+hl.unbind("SUPER + GRAVE")
+o.bind("SUPER + GRAVE", "Trocar de tela (trabalho ⇄ apoio)", function()
+  local workspaces = require("hypr.workspaces")
+  local internal, external = workspaces.displays()
+  local target
+
+  if internal and external then
+    local cur = hl.get_active_monitor()
+    target = (cur and cur.name == external) and internal or external
+    hl.dispatch(hl.dsp.focus({ monitor = target }))
+  else
+    local cur = hl.get_active_workspace()
+
+    if cur and cur.name == "apoio" then
+      workspaces.focus_work()
+    else
+      hl.dispatch(hl.dsp.focus({ workspace = "name:apoio" }))
+    end
+  end
+end)
+
+-- Super+Shift+` manda a janela em foco para a área de apoio e mantém o foco
+-- onde está (a janela aparece na tela interna, o trabalho continua o mesmo)
+o.bind("SUPER + SHIFT + GRAVE", "Mover janela para a área de apoio", hl.dsp.window.move({ workspace = "name:apoio", follow = false }))
+
+-- Super+Alt+R reaplica a divisão de áreas entre as telas (útil se algo ficou
+-- fora do lugar depois de conectar/desconectar monitor ou mudar a disposição)
+o.bind("SUPER + ALT + R", "Reorganizar áreas entre as telas", function()
+  require("hypr.workspaces").reconcile(true)
+end)
 
 -- Super+F maximiza como o Niri: ocupa a tela mantendo barra e bordas (era: tela cheia, agora em Super+Shift+F)
 hl.unbind("SUPER + F")

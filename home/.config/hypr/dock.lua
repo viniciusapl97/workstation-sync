@@ -13,6 +13,13 @@ hl.config({
       contrast = 1.0,
       brightness = 1.0,
       vibrancy = 0.35,
+      -- O cache de blur (new_optimizations) reaproveita o que já foi borrado
+      -- quando só um pedaço da tela muda. Num vidro que anima ou que fica em
+      -- cima de uma tela que redesenha inteira (hover no notch, troca de
+      -- monitor/área) ele reaproveita região errada por um frame — o vidro
+      -- "pisca". Recalcular sempre custa um pouco de GPU e não pisca.
+      -- Voltar ao padrão: apagar a linha abaixo.
+      new_optimizations = false,
     },
   },
 })

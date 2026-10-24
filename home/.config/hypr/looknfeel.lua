@@ -117,10 +117,10 @@ hl.config({
 -- Terminal (kitty) as a dark glass card: no rim (rounding comes from the global 20).
 hl.window_rule({ match = { class = "^kitty$" }, border_size = 0 })
 
--- Floating-card spacing: 14 px to the screen edges, 12 px between windows (6 + 6).
+-- Floating-card spacing: 14 px top, 19 px sides/bottom (no dock there), 12 px between windows (6 + 6).
 hl.config({
   general = {
-    gaps_out = 14,
+    gaps_out = { top = 14, right = 19, bottom = 19, left = 19 },
     gaps_in = 6,
   },
 })
