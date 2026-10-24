@@ -22,7 +22,7 @@ Ele pede o login do GitHub (navegador) e a senha do sudo, e faz, nesta ordem:
 | `pacotes` | `packages.txt` via yay; Steam e Voxtype pelos instaladores do Omarchy |
 | `plugins` | `plugins.txt`: MyBar, MyDock, organizer, Keyboard, Galaxy Buds, Lock Explorer, Omaland, Flux |
 | `configs` | `files.txt` (cópias em `home/`): Hyprland, `shell.json`, MyBar, hooks de tema, terminais, webapps, `bt-agent` |
-| `temperatura` | `temp-guard/`: avisa quando CPU, GPU, VRAM ou SSD passam do limite e grava as máximas de cada sessão de jogo (GameMode); o Monitor do MyBar mostra os dois. Limites em `~/.config/temp-guard/limits.conf` (o de uma máquina não é sobrescrito) |
+| `temperatura` | `temp-guard/`: avisa quando CPU, GPU, VRAM ou SSD passam do limite e grava as máximas de cada sessão de jogo (GameMode); o Monitor do MyBar mostra os dois. Limites em `~/.config/temp-guard/limits.conf` (o de uma máquina não é sobrescrito). `temp-history` grava um minuto por linha (temperaturas, carga, app em foco, processos) em `~/.local/state/temp-guard/history/`; `temp-history resumo 30` faz o relatório para analisar (ou colar numa IA). `cpu-power` (root) dá o consumo da CPU a ele |
 | `wallpapers` | clona [wallpapers](https://github.com/viniciusapl97/wallpapers) em `~/.config/omarchy/backgrounds` e roda o `install.sh` dele |
 | `icones` | Reversal (as cores que o hook de ícones usa) |
 | `padroes` | kitty, Brave e Claude como terminal, navegador e agente padrão |

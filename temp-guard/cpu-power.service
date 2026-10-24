@@ -1,0 +1,11 @@
+[Unit]
+Description=Consumo médio da CPU para o temp-history
+
+[Service]
+ExecStart=/usr/local/bin/cpu-power
+Restart=on-failure
+RestartSec=30
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

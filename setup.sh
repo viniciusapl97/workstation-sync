@@ -150,6 +150,8 @@ step_temperatura() {
   local src dest n=0
   for src in temp-guard:.local/bin/temp-guard \
              temp-guard.service:.config/systemd/user/temp-guard.service \
+             temp-history:.local/bin/temp-history \
+             temp-history.service:.config/systemd/user/temp-history.service \
              limits.conf:.config/temp-guard/limits.conf; do
     dest="$HOME/${src#*:}"; src="$HERE/temp-guard/${src%%:*}"
     [[ -f $dest ]] && cmp -s "$src" "$dest" && continue
@@ -160,9 +162,21 @@ step_temperatura() {
     n=$((n + 1))
   done
   systemctl --user daemon-reload
-  systemctl --user enable temp-guard.service >/dev/null 2>&1
-  systemctl --user restart temp-guard.service || warn "temp-guard não iniciou"
-  echo "  $n arquivos atualizados; serviço $(systemctl --user is-active temp-guard.service)"
+  local u
+  for u in temp-guard temp-history; do
+    systemctl --user enable "$u.service" >/dev/null 2>&1
+    systemctl --user restart "$u.service" || warn "$u não iniciou"
+  done
+  # Consumo da CPU para o histórico: o RAPL só é legível pelo root.
+  if ! cmp -s temp-guard/cpu-power /usr/local/bin/cpu-power || ! cmp -s temp-guard/cpu-power.service /etc/systemd/system/cpu-power.service; then
+    sudo install -Dm755 temp-guard/cpu-power /usr/local/bin/cpu-power
+    sudo install -Dm644 temp-guard/cpu-power.service /etc/systemd/system/cpu-power.service
+    sudo systemctl daemon-reload
+    sudo systemctl enable cpu-power.service >/dev/null 2>&1
+    sudo systemctl restart cpu-power.service || warn "cpu-power não iniciou"
+  fi
+  echo "  $n arquivos atualizados; temp-guard $(systemctl --user is-active temp-guard.service)," \
+    "temp-history $(systemctl --user is-active temp-history.service), cpu-power $(systemctl is-active cpu-power.service)"
 }
 
 step_wallpapers() {

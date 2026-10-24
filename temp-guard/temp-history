@@ -1,0 +1,347 @@
+#!/usr/bin/env python3
+"""Histórico de temperatura e atividade, para analisar depois (ou pedir a uma IA).
+
+    temp-history                  grava (o serviço temp-history.service roda isto)
+    temp-history resumo [dias]    relatório dos últimos N dias (padrão 7), para colar numa IA
+
+Lê os sensores a cada 5 s e grava uma linha JSON por minuto em
+~/.local/state/temp-guard/history/AAAA-MM-DD.jsonl (média e máxima do minuto,
+o app em foco, os processos que mais usaram CPU, GameMode, microfone). A
+primeira linha de cada dia descreve a máquina (CPU, GPU, RAM), para comparar
+antes e depois de uma troca de peça. Arquivos com mais de 14 dias viram .gz.
+
+O consumo da CPU vem de /run/cpu-power/watts, que o serviço root cpu-power
+escreve (a leitura direta do RAPL é só do root); sem ele, fica null.
+"""
+import collections
+import datetime as dt
+import glob
+import gzip
+import json
+import os
+import platform
+import statistics
+import subprocess
+import sys
+import time
+
+STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")), "temp-guard")
+HIST = os.path.join(STATE, "history")
+WATTS = "/run/cpu-power/watts"
+SAMPLE = 5
+MINUTE = 60
+
+
+def read(path, conv=str):
+    try:
+        with open(path) as f:
+            return conv(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def milli(path):
+    v = read(path, int)
+    return None if v is None else v / 1000
+
+
+# ---- sensores ----
+
+def find_sensors():
+    s = {"cpu": None, "ccd": [], "gpu": {}, "gpu_dir": None, "ssd": None, "board": []}
+    for h in sorted(glob.glob("/sys/class/hwmon/hwmon*")):
+        name = read(f"{h}/name")
+        labels = {read(l): l[:-6] + "_input" for l in glob.glob(f"{h}/temp*_label")}
+        if name in ("k10temp", "zenpower", "coretemp") and not s["cpu"]:
+            s["cpu"] = labels.get("Tctl") or labels.get("Package id 0") or f"{h}/temp1_input"
+            s["ccd"] = [p for l, p in labels.items() if l and l.startswith("Tccd")]
+        elif name == "amdgpu" and "junction" in labels and not s["gpu"]:
+            s["gpu"] = {k: labels[k] for k in ("edge", "junction", "mem") if k in labels}
+            s["gpu_dir"] = h
+        elif name == "nvme" and not s["ssd"]:
+            s["ssd"] = f"{h}/temp1_input"
+        elif name in ("gigabyte_wmi", "nct6775", "nct6687", "it87", "asus_wmi_sensors"):
+            s["board"] += sorted(glob.glob(f"{h}/temp*_input"))
+    return s
+
+
+def gpu_extra(h):
+    if not h:
+        return {}
+    dev = os.path.realpath(f"{h}/device")
+    w = read(f"{h}/power1_average", int) or read(f"{h}/power1_input", int)
+    return {
+        "load": read(f"{dev}/gpu_busy_percent", int),
+        "w": None if w is None else w / 1e6,
+        "fan": read(f"{h}/fan1_input", int),
+    }
+
+
+def cpu_times():
+    with open("/proc/stat") as f:
+        v = [int(x) for x in f.readline().split()[1:9]]
+    return v[3] + v[4], sum(v)
+
+
+def cpu_mhz():
+    fs = [read(p, int) for p in glob.glob("/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq")]
+    fs = [f for f in fs if f]
+    return sum(fs) / len(fs) / 1000 if fs else None
+
+
+def proc_ticks():
+    out = {}
+    for p in glob.glob("/proc/[0-9]*/stat"):
+        try:
+            with open(p) as f:
+                s = f.read()
+        except OSError:
+            continue
+        l, r = s.find(" ("), s.rfind(")")
+        f = s[r + 2:].split()
+        out[s[:l]] = (s[l + 2:r], int(f[11]) + int(f[12]))
+    return out
+
+
+def run(cmd):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=3).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def focused():
+    try:
+        w = json.loads(run(["hyprctl", "-j", "activewindow"]) or "{}")
+    except ValueError:
+        return None
+    if not w.get("class"):
+        return None
+    return {"class": w["class"], "title": (w.get("title") or "")[:80], "fullscreen": bool(w.get("fullscreen"))}
+
+
+def machine():
+    cpu = next((l.split(":", 1)[1].strip() for l in open("/proc/cpuinfo") if l.startswith("model name")), None)
+    gpus = [l.split(": ", 1)[-1] for l in run(["lspci"]).splitlines() if " VGA " in l or " 3D " in l]
+    mem = next((int(l.split()[1]) for l in open("/proc/meminfo") if l.startswith("MemTotal")), 0)
+    return {"meta": {"cpu": cpu, "gpus": gpus, "ram_gb": round(mem / 1048576, 1),
+                     "kernel": platform.release(), "since": dt.datetime.now().astimezone().isoformat(timespec="seconds")}}
+
+
+# ---- gravação ----
+
+def stat(xs, nd=1):
+    xs = [x for x in xs if x is not None]
+    if not xs:
+        return None
+    return {"avg": round(statistics.fmean(xs), nd), "max": round(max(xs), nd)}
+
+
+def avg(xs, nd=1):
+    xs = [x for x in xs if x is not None]
+    return round(statistics.fmean(xs), nd) if xs else None
+
+
+def compress_old():
+    cutoff = time.time() - 14 * 86400
+    for p in glob.glob(f"{HIST}/*.jsonl"):
+        if os.path.getmtime(p) < cutoff:
+            with open(p, "rb") as src, gzip.open(p + ".gz", "wb") as dst:
+                dst.write(src.read())
+            os.remove(p)
+
+
+def record():
+    os.makedirs(HIST, exist_ok=True)
+    compress_old()
+    sens = find_sensors()
+    ncpu = os.cpu_count() or 1
+    tck = os.sysconf("SC_CLK_TCK")
+    while True:
+        start = time.time()
+        idle0, total0 = cpu_times()
+        procs0 = proc_ticks()
+        acc = collections.defaultdict(list)
+        apps = collections.Counter()
+        app_info = {}
+        game = mic = False
+        while time.time() - start < MINUTE - SAMPLE / 2:
+            acc["cpu"].append(milli(sens["cpu"]) if sens["cpu"] else None)
+            acc["ccd"].append(max([milli(p) or 0 for p in sens["ccd"]], default=None) or None)
+            for k, p in sens["gpu"].items():
+                acc["gpu_" + k].append(milli(p))
+            for k, v in gpu_extra(sens["gpu_dir"]).items():
+                acc["gpu_" + k].append(v)
+            acc["ssd"].append(milli(sens["ssd"]) if sens["ssd"] else None)
+            for i, p in enumerate(sens["board"]):
+                acc[f"board{i}"].append(milli(p))
+            acc["mhz"].append(cpu_mhz())
+            acc["cpu_w"].append(read(WATTS, float))
+            w = focused()
+            if w:
+                apps[w["class"]] += 1
+                app_info[w["class"]] = w
+            game = game or "is active" in run(["gamemoded", "-s"])
+            mic = mic or bool(run(["pactl", "list", "short", "source-outputs"]).strip())
+            time.sleep(SAMPLE)
+
+        idle1, total1 = cpu_times()
+        secs = time.time() - start
+        load = 100 * (1 - (idle1 - idle0) / max(1, total1 - total0))
+        by_name = collections.Counter()
+        for pid, (name, ticks) in proc_ticks().items():
+            if pid in procs0:
+                by_name[name] += ticks - procs0[pid][1]
+        top = [{"name": n, "cpu": round(100 * t / tck / secs / ncpu, 1)}
+               for n, t in by_name.most_common(3) if t > 0]
+
+        app = app_info.get(apps.most_common(1)[0][0]) if apps else None
+        line = {
+            "t": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+            "cpu": {"temp": stat(acc["cpu"]), "ccd_max": stat(acc["ccd"]) and stat(acc["ccd"])["max"],
+                    "load": round(load, 1), "mhz": avg(acc["mhz"], 0), "w": avg(acc["cpu_w"])},
+            "gpu": None if not sens["gpu"] else {
+                "junction": stat(acc["gpu_junction"]), "edge": avg(acc["gpu_edge"]),
+                "vram_max": stat(acc["gpu_mem"]) and stat(acc["gpu_mem"])["max"],
+                "load": avg(acc["gpu_load"]), "w": avg(acc["gpu_w"]), "fan_rpm": avg(acc["gpu_fan"], 0)},
+            "ssd_max": stat(acc["ssd"]) and stat(acc["ssd"])["max"],
+            "board": [avg(acc[f"board{i}"]) for i in range(len(sens["board"]))],
+            "epp": read("/sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference"),
+            "gamemode": game,
+            "mic": mic,
+            "app": app,
+            "top": top,
+        }
+        path = f"{HIST}/{dt.date.today().isoformat()}.jsonl"
+        new = not os.path.exists(path)
+        with open(path, "a") as f:
+            if new:
+                f.write(json.dumps(machine(), ensure_ascii=False) + "\n")
+            f.write(json.dumps(line, ensure_ascii=False) + "\n")
+
+
+# ---- resumo ----
+
+def load_days(days):
+    rows, metas = [], []
+    today = dt.date.today()
+    for d in range(days - 1, -1, -1):
+        base = f"{HIST}/{(today - dt.timedelta(days=d)).isoformat()}.jsonl"
+        for p, opener in ((base, open), (base + ".gz", gzip.open)):
+            if os.path.exists(p):
+                with opener(p, "rt") as f:
+                    for l in f:
+                        try:
+                            r = json.loads(l)
+                        except ValueError:
+                            continue
+                        (metas if "meta" in r else rows).append(r.get("meta", r))
+    return rows, metas
+
+
+def activity(r):
+    a = r.get("app") or {}
+    if r.get("gamemode") or (a.get("fullscreen") and a.get("class", "").startswith(("steam_app", "gamescope"))):
+        return "jogo: " + (a.get("title") or a.get("class") or "?")
+    label = a.get("class") or "sem janela"
+    return label + (" + microfone" if r.get("mic") else "")
+
+
+def g(r, *path):
+    for k in path:
+        r = r.get(k) if isinstance(r, dict) else None
+    return r
+
+
+def fmt(x, nd=0):
+    return "—" if x is None else f"{x:.{nd}f}"
+
+
+def summary(days):
+    rows, metas = load_days(days)
+    if not rows:
+        print(f"Sem histórico nos últimos {days} dias ({HIST}).")
+        return
+    print(f"# Histórico de temperatura — últimos {days} dias ({len(rows)} minutos gravados)\n")
+    seen = []
+    for m in metas:
+        key = (m.get("cpu"), tuple(m.get("gpus") or []), m.get("ram_gb"))
+        if key not in seen:
+            seen.append(key)
+            print(f"Máquina desde {m.get('since', '?')[:10]}: CPU {m.get('cpu')}; GPU {'; '.join(m.get('gpus') or [])}; RAM {m.get('ram_gb')} GB")
+    print("\nTemperaturas em °C. CPU = Tctl (o que o sistema mostra); núcleos = Tccd. "
+          "Placa = sensor mais frio da placa-mãe, aproxima o ar dentro do gabinete. "
+          "Limites de aviso: CPU 90, GPU junção 100, VRAM 95, SSD 75.\n")
+
+    def table(title, groups, key_order=None):
+        print(f"## {title}\n")
+        print("| | min | CPU méd | CPU máx | núcleos máx | carga CPU % | CPU W | GPU junção méd | GPU junção máx | VRAM máx | carga GPU % | GPU W | SSD máx | placa |")
+        print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+        keys = key_order or sorted(groups, key=lambda k: -len(groups[k]))
+        for k in keys:
+            rs = groups[k]
+            mx = lambda *p: max([v for v in (g(r, *p) for r in rs) if v is not None], default=None)
+            mean = lambda *p: avg([g(r, *p) for r in rs])
+            board = avg([min(b for b in r["board"] if b is not None) for r in rs
+                         if r.get("board") and any(b is not None for b in r["board"])])
+            print(f"| {k} | {len(rs)} | {fmt(mean('cpu','temp','avg'))} | {fmt(mx('cpu','temp','max'))} | {fmt(mx('cpu','ccd_max'))} "
+                  f"| {fmt(mean('cpu','load'))} | {fmt(mean('cpu','w'))} | {fmt(mean('gpu','junction','avg'))} | {fmt(mx('gpu','junction','max'))} "
+                  f"| {fmt(mx('gpu','vram_max'))} | {fmt(mean('gpu','load'))} | {fmt(mean('gpu','w'))} | {fmt(mx('ssd_max'))} | {fmt(board)} |")
+        print()
+
+    by_act = collections.defaultdict(list)
+    for r in rows:
+        by_act[activity(r)].append(r)
+    big = {k: v for k, v in by_act.items() if len(v) >= 5}
+    table("Por atividade (app em foco; 5 min ou mais)", big)
+
+    by_hour = collections.defaultdict(list)
+    for r in rows:
+        by_hour[f"{r['t'][11:13]}h"].append(r)
+    table("Por hora do dia", by_hour, sorted(by_hour))
+
+    # A mesma carga ficando mais quente com as semanas = pasta térmica/poeira.
+    buckets = [(0, 10), (10, 30), (30, 60), (60, 101)]
+    by_load = collections.defaultdict(list)
+    for r in rows:
+        ld = g(r, "cpu", "load")
+        for lo, hi in buckets:
+            if ld is not None and lo <= ld < hi:
+                by_load[f"CPU {lo}–{min(hi, 100)}%"].append(r)
+    table("Por faixa de carga da CPU", by_load, [f"CPU {lo}–{min(hi, 100)}%" for lo, hi in buckets if f"CPU {lo}–{min(hi, 100)}%" in by_load])
+
+    by_week = collections.defaultdict(list)
+    for r in rows:
+        y, w, _ = dt.date.fromisoformat(r["t"][:10]).isocalendar()
+        by_week[f"{y}-S{w:02d}"].append(r)
+    if len(by_week) > 1:
+        print("## Tendência semanal com a mesma carga (CPU 30–60%)\n")
+        print("| semana | min | CPU méd | °C acima da placa | °C por W da CPU |")
+        print("|---|---|---|---|---|")
+        for wk in sorted(by_week):
+            rs = [r for r in by_week[wk] if 30 <= (g(r, "cpu", "load") or -1) < 60]
+            deltas = [g(r, "cpu", "temp", "avg") - min(b for b in r["board"] if b is not None) for r in rs
+                      if g(r, "cpu", "temp", "avg") is not None and r.get("board") and any(b is not None for b in r["board"])]
+            perw = [(g(r, "cpu", "temp", "avg") - min(b for b in r["board"] if b is not None)) / g(r, "cpu", "w") for r in rs
+                    if g(r, "cpu", "w") and r.get("board") and any(b is not None for b in r["board"])]
+            print(f"| {wk} | {len(rs)} | {fmt(avg([g(r, 'cpu', 'temp', 'avg') for r in rs]))} | {fmt(avg(deltas))} | {fmt(avg(perw, 2), 2)} |")
+        print()
+
+    hot = sorted(rows, key=lambda r: -(g(r, "cpu", "temp", "max") or 0))[:10]
+    print("## 10 minutos mais quentes da CPU\n")
+    print("| quando | CPU máx | carga % | CPU W | atividade | processos |")
+    print("|---|---|---|---|---|---|")
+    for r in hot:
+        procs = ", ".join(f"{p['name']} {p['cpu']}%" for p in r.get("top", []))
+        print(f"| {r['t'][:16].replace('T', ' ')} | {fmt(g(r, 'cpu', 'temp', 'max'))} | {fmt(g(r, 'cpu', 'load'))} | {fmt(g(r, 'cpu', 'w'))} | {activity(r)} | {procs} |")
+    print("\nPara a IA: compare a temperatura com a carga e com a placa (ar do gabinete). "
+          "Pasta térmica ruim ou poeira aparecem como a mesma carga/consumo esquentando mais com o tempo "
+          "(°C acima da placa ou °C por W subindo semana a semana), ou núcleos muito acima do Tctl em carga leve. "
+          "Temperatura alta com carga baixa aponta processo de fundo; veja a coluna de processos.")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "resumo":
+        summary(int(sys.argv[2]) if len(sys.argv) > 2 else 7)
+    else:
+        record()

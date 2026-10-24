@@ -1,0 +1,20 @@
+#!/bin/bash
+# Consumo médio da CPU (W) a cada 5 s em /run/cpu-power/watts, legível por
+# todos. O contador do RAPL é só do root porque leituras muito rápidas dele
+# vazam informação (PLATYPUS); a média de 5 s não serve para isso. Usado pelo
+# temp-history.
+set -u
+dir=/run/cpu-power
+mkdir -p "$dir" && chmod 755 "$dir"
+rapl=$(grep -l '^package-0$' /sys/class/powercap/*/name 2>/dev/null | head -1)
+[[ -n $rapl ]] || { echo "sem RAPL" >&2; exit 1; }
+rapl=$(dirname "$rapl")
+max=$(<"$rapl/max_energy_range_uj")
+prev=$(<"$rapl/energy_uj")
+while sleep 5; do
+  cur=$(<"$rapl/energy_uj")
+  d=$((cur - prev)); ((d < 0)) && d=$((d + max))
+  prev=$cur
+  printf '%d.%01d\n' $((d / 5000000)) $((d / 500000 % 10)) >"$dir/watts.tmp"
+  chmod 644 "$dir/watts.tmp" && mv "$dir/watts.tmp" "$dir/watts"
+done
