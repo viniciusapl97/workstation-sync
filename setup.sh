@@ -167,8 +167,9 @@ step_icones() {
   fi
   local tmp; tmp=$(mktemp -d)
   git clone -q --depth 1 https://github.com/yeyushengfan258/Reversal-icon-theme "$tmp/reversal"
-  # Só as cores que o hook icon-theme.sh escolhe (sem black e brown).
-  (cd "$tmp/reversal" && ./install.sh -t default blue cyan green grey lightblue orange pink purple red >/dev/null)
+  # Só as cores que o hook icon-theme.sh escolhe (sem black e brown). A base
+  # (azul) é a variante sem -t: "-t default" vira "-default", que não existe.
+  (cd "$tmp/reversal" && ./install.sh >/dev/null && ./install.sh -t blue cyan green grey lightblue orange pink purple red >/dev/null)
   rm -rf "$tmp"
   echo "  $(compgen -G "$HOME/.local/share/icons/Reversal*" | wc -l) variantes"
 }
