@@ -1,0 +1,12 @@
+[Unit]
+Description=Aviso de temperatura de CPU, GPU e SSD
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/temp-guard
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=graphical-session.target

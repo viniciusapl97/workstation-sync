@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 HERE=$PWD
 
-STEPS=(ferramentas github pacotes plugins configs wallpapers icones padroes repos fim)
+STEPS=(ferramentas github pacotes plugins configs temperatura wallpapers icones padroes repos fim)
 BACKUP="$HOME/.local/state/workstation-sync/backup-$(date +%F-%H%M%S)"
 export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH"
 
@@ -142,6 +142,27 @@ EOF
   if command -v bt-agent >/dev/null; then
     systemctl --user enable --now bt-agent.service >/dev/null 2>&1 || warn "bt-agent.service não ativou"
   fi
+}
+
+step_temperatura() {
+  say "Vigia de temperatura (temp-guard)"
+  # Fora de files.txt: o capture.sh recria home/ a partir do notebook, que não o usa.
+  local src dest n=0
+  for src in temp-guard:.local/bin/temp-guard \
+             temp-guard.service:.config/systemd/user/temp-guard.service \
+             limits.conf:.config/temp-guard/limits.conf; do
+    dest="$HOME/${src#*:}"; src="$HERE/temp-guard/${src%%:*}"
+    [[ -f $dest ]] && cmp -s "$src" "$dest" && continue
+    if [[ $dest == */limits.conf && -f $dest ]]; then continue; fi   # limites da máquina
+    backup "$dest"
+    mkdir -p "$(dirname "$dest")"
+    cp -p -- "$src" "$dest"
+    n=$((n + 1))
+  done
+  systemctl --user daemon-reload
+  systemctl --user enable temp-guard.service >/dev/null 2>&1
+  systemctl --user restart temp-guard.service || warn "temp-guard não iniciou"
+  echo "  $n arquivos atualizados; serviço $(systemctl --user is-active temp-guard.service)"
 }
 
 step_wallpapers() {

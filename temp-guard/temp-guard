@@ -1,0 +1,89 @@
+#!/bin/bash
+# Vigia as temperaturas de CPU, GPU e SSD e avisa por notificação quando uma
+# fica acima do limite por 15s seguidos. Enquanto o GameMode está ativo, guarda
+# as máximas da sessão; quando o jogo fecha, manda o resumo e grava uma linha
+# em ~/.local/state/temp-guard/sessoes.csv.
+#
+# Limites (°C) em ~/.config/temp-guard/limits.conf, o mesmo arquivo que o
+# Monitor do MyBar usa para as cores; sem ele, os valores abaixo.
+set -uo pipefail
+
+INTERVAL=5
+SUSTAIN=3      # leituras seguidas acima do limite antes de avisar
+COOLDOWN=300   # segundos entre avisos do mesmo sensor
+STATE=${XDG_STATE_HOME:-$HOME/.local/state}/temp-guard
+mkdir -p "$STATE"
+
+declare -A path limit label over last_alert peak
+declare -A max=([cpu]=90 [gpu]=100 [vram]=95 [ssd]=75)
+LIMITS=${XDG_CONFIG_HOME:-$HOME/.config}/temp-guard/limits.conf
+if [[ -r $LIMITS ]]; then
+  while IFS='=' read -r k v; do
+    k=${k//[[:space:]]/}; v=${v%%#*}; v=${v//[[:space:]]/}
+    [[ -n ${max[$k]:-} && $v =~ ^[0-9]+$ ]] && max[$k]=$v
+  done <"$LIMITS"
+fi
+
+add() { # id caminho limite rótulo
+  [[ -r $2 ]] || return 0
+  path[$1]=$2 limit[$1]=$3 label[$1]=$4 over[$1]=0 last_alert[$1]=0 peak[$1]=0
+}
+
+for h in /sys/class/hwmon/hwmon*; do
+  name=$(<"$h/name")
+  case $name in
+    k10temp) add cpu "$h/temp1_input" "${max[cpu]}" CPU ;;
+    nvme) add ssd "$h/temp1_input" "${max[ssd]}" SSD ;;
+    amdgpu)
+      # Só a placa de vídeo dedicada: a integrada não tem sensor de junção.
+      grep -qx junction "$h"/temp*_label 2>/dev/null || continue
+      [[ -n ${path[gpu]:-} ]] && continue
+      for t in "$h"/temp*_label; do
+        case $(<"$t") in
+          junction) add gpu "${t%_label}_input" "${max[gpu]}" "GPU (junção)" ;;
+          mem) add vram "${t%_label}_input" "${max[vram]}" VRAM ;;
+        esac
+      done ;;
+  esac
+done
+
+((${#path[@]})) || { echo "nenhum sensor encontrado" >&2; exit 1; }
+
+gaming() { command -v gamemoded >/dev/null && gamemoded -s 2>/dev/null | grep -q 'is active'; }
+
+session=0 started=0
+while true; do
+  now=$(date +%s)
+  for id in "${!path[@]}"; do
+    t=$(( $(<"${path[$id]}") / 1000 ))
+    ((t > peak[$id])) && peak[$id]=$t
+    if ((t >= limit[$id])); then
+      over[$id]=$((over[$id] + 1))
+      if ((over[$id] >= SUSTAIN && now - last_alert[$id] >= COOLDOWN)); then
+        notify-send -u critical -i dialog-warning "${label[$id]} quente: ${t}°C" \
+          "Acima de ${limit[$id]}°C há $((over[$id] * INTERVAL))s. Confira a ventilação ou feche o jogo."
+        last_alert[$id]=$now
+      fi
+    else
+      over[$id]=0
+    fi
+  done
+
+  if gaming; then
+    if ((!session)); then
+      session=1 started=$now
+      for id in "${!peak[@]}"; do peak[$id]=0; done
+    fi
+  elif ((session)); then
+    session=0
+    mins=$(( (now - started) / 60 ))
+    summary=""
+    for id in cpu gpu vram ssd; do
+      [[ -n ${path[$id]:-} ]] && summary+="${label[$id]}: ${peak[$id]}°C\n"
+    done
+    notify-send -i dialog-information "Fim da sessão (${mins} min): temperaturas máximas" "$(printf "$summary")"
+    [[ -f $STATE/sessoes.csv ]] || echo "inicio,minutos,cpu,gpu_juncao,vram,ssd" >"$STATE/sessoes.csv"
+    echo "$(date -d @"$started" '+%F %R'),$mins,${peak[cpu]:-},${peak[gpu]:-},${peak[vram]:-},${peak[ssd]:-}" >>"$STATE/sessoes.csv"
+  fi
+  sleep "$INTERVAL"
+done
